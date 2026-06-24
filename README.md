@@ -24,4 +24,4 @@ estudiante@demo.com	est123
 Antes de ejecutar la aplicación, asegúrese de tener instalado Python en su sistema. Se recomienda instalar las dependencias necesarias ejecutando el siguiente comando en la terminal:
 
 ```bash
-    pip install flask werkzeug```
+    pip install flask werkzeug
