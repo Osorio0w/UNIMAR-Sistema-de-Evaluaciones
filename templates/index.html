@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNIMAR · Sistema de Evaluaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter','sans-serif'], display: ['Sora','sans-serif'] },
+        colors: {
+          slate: {
+            850: '#0f1623',
+            950: '#080c14',
+          }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { background: #080c14; }
+
+  /* ── Vistas ── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── Glass card ── */
+  .glass {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 1rem;
+  }
+
+  /* ── Inputs — texto siempre blanco, fondo oscuro ── */
+  .field {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 0.625rem;
+    color: #ffffff;
+    padding: 0.7rem 1rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-text-fill-color: #ffffff;
+  }
+  .field:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+  .field::placeholder { color: #475569; }
+  .field option { background: #0f172a; color: #ffffff; }
+  /* Fuerza color blanco en autofill de Chrome */
+  .field:-webkit-autofill,
+  .field:-webkit-autofill:hover,
+  .field:-webkit-autofill:focus {
+    -webkit-text-fill-color: #ffffff;
+    -webkit-box-shadow: 0 0 0 1000px #0f172a inset;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* ── Radio / Checkbox ── */
+  input[type="radio"], input[type="checkbox"] {
+    accent-color: #6366f1;
+    width: 1.1rem; height: 1.1rem; flex-shrink: 0;
+  }
+
+  /* ── Botones ── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+    font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.875rem;
+    border-radius: 0.625rem; padding: 0.65rem 1.4rem;
+    cursor: pointer; border: none; outline: none;
+    transition: all 0.2s ease;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(99, 102, 241, 0.55);
+    filter: brightness(1.08);
+  }
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid #334155;
+    color: #94a3b8;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    border-color: #6366f1;
+    color: #a5b4fc;
+    background: rgba(99,102,241,0.08);
+  }
+
+  .btn-ghost {
+    background: transparent; color: #64748b;
+    border-radius: 0.5rem;
+  }
+  .btn-ghost:hover:not(:disabled) { color: #e2e8f0; background: rgba(255,255,255,0.05); }
+
+  .btn-danger {
+    background: rgba(239,68,68,0.12);
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+  .btn-danger:hover { background: rgba(239,68,68,0.22); }
+
+  /* ── Cards de quiz ── */
+  .quiz-card {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 0.875rem;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+  .quiz-card:hover {
+    border-color: #6366f1;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 40px rgba(99,102,241,0.18);
+  }
+
+  /* ── Option rows (preguntas) ── */
+  .option-row {
+    display: flex; align-items: center; gap: 0.85rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.625rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: #e2e8f0;
+  }
+  .option-row:hover {
+    background: rgba(99,102,241,0.1);
+    border-color: rgba(99,102,241,0.3);
+  }
+
+  /* ── Timer bar ── */
+  #timer-bar-fill {
+    height: 100%; border-radius: 9999px;
+    background: linear-gradient(90deg, #6366f1, #a855f7);
+    transition: width 0.9s linear, background 0.5s;
+  }
+  #timer-bar-fill.urgent { background: linear-gradient(90deg, #ef4444, #f97316); }
+
+  /* ── Score ring ── */
+  .ring-track { fill: none; stroke: #1e293b; stroke-width: 10; }
+  .ring-fill {
+    fill: none; stroke-width: 10; stroke-linecap: round;
+    stroke: url(#ringGrad);
+    stroke-dasharray: 565; stroke-dashoffset: 565;
+    transform-origin: center; transform: rotate(-90deg);
+    transition: stroke-dashoffset 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .ring-fill.drawn { stroke-dashoffset: var(--offset, 0); }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-flex; align-items: center;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 0.2rem 0.65rem; border-radius: 9999px; text-transform: uppercase;
+  }
+  .badge-indigo { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+  .badge-green  { background: rgba(16,185,129,0.12); color: #34d399; }
+  .badge-amber  { background: rgba(245,158,11,0.12); color: #fbbf24; }
+  .badge-red    { background: rgba(239,68,68,0.12);  color: #f87171; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 1.75rem; left: 50%;
+    transform: translateX(-50%) translateY(5rem);
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #e2e8f0; padding: 0.65rem 1.4rem;
+    border-radius: 0.75rem; font-size: 0.85rem; font-weight: 500;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 99; white-space: nowrap; pointer-events: none;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Label forzado blanco ── */
+  .field-label { display: block; font-size: 0.75rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    color: #94a3b8; margin-bottom: 0.4rem; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 1px solid #1e293b; margin: 1.25rem 0; }
+</style>
+</head>
+
+<body class="min-h-screen text-slate-200">
+
+<!-- ══════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════ -->
+<header class="sticky top-0 z-50 border-b border-slate-800"
+        style="background:rgba(8,12,20,0.92);backdrop-filter:blur(20px)">
+  <div class="max-w-4xl mx-auto px-5 h-16 flex items-center justify-between">
+
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+           style="background:linear-gradient(135deg,#6366f1,#a855f7)">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+             stroke="#fff" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <div class="leading-tight">
+        <p class="font-display text-base font-700 text-white tracking-tight">UNIMAR</p>
+        <p class="text-xs text-slate-500 -mt-0.5">Sistema de Evaluaciones</p>
+      </div>
+    </div>
+
+    <div id="header-user" class="hidden items-center gap-3">
+      <span id="header-name" class="text-sm text-slate-400"></span>
+      <span id="header-role" class="badge badge-indigo"></span>
+      <button id="btn-logout" class="btn btn-ghost text-xs px-3 py-1.5">Cerrar sesión</button>
+    </div>
+
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════ -->
+<main class="max-w-4xl mx-auto px-5 pb-24">
+
+<!-- ─── LOGIN ────────────────────────────── -->
+<section id="view-login" class="view active">
+  <div class="max-w-md mx-auto pt-20">
+    <div class="text-center mb-10">
+      <h1 class="font-display text-3xl font-700 text-white mb-2">Acceso al sistema</h1>
+      <p class="text-slate-400 text-sm">Ingresa tus credenciales institucionales</p>
+    </div>
+    <div class="glass p-8 space-y-5">
+      <div>
+        <label class="field-label">Correo electrónico</label>
+        <input id="login-email" class="field" type="email"
+               placeholder="usuario@unimar.edu" autocomplete="username">
+      </div>
+      <div>
+        <label class="field-label">Contraseña</label>
+        <input id="login-password" class="field" type="password"
+               placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <p id="login-error" class="text-xs font-500 text-red-400 hidden"></p>
+      <button id="btn-login" class="btn btn-primary w-full py-3">
+        Iniciar sesión
+      </button>
+      <hr class="divider">
+      <p class="text-center text-sm text-slate-500">
+        ¿No tienes cuenta?
+        <button id="btn-go-register" class="text-indigo-400 font-600 hover:text-indigo-300">
+          Regístrate aquí
+        </button>
+      </p>
+    </div>
+    <p class="text-center text-xs mt-5 text-slate-600">
+      Acceso demo → <span class="text-slate-500">profesor@demo.com / prof123 &nbsp;·&nbsp; estudiante@demo.com / est123</span>
+    </p>
+  </div>
+</section>
+
+<!-- ─── REGISTRO ──────────────────────────── -->
+<section id="view-register" class="view">
+  <div class="max-w-md mx-auto pt-20">
+    <div class="text-center mb-10">
+      <h1 class="font-display text-3xl font-700 text-white mb-2">Crear cuenta</h1>
+      <p class="text-slate-400 text-sm">Registro de estudiantes de UNIMAR</p>
+    </div>
+    <div class="glass p-8 space-y-5">
+      <div>
+        <label class="field-label">Nombre completo</label>
+        <input id="reg-name" class="field" type="text" placeholder="Tu nombre completo">
+      </div>
+      <div>
+        <label class="field-label">Correo electrónico</label>
+        <input id="reg-email" class="field" type="email" placeholder="usuario@unimar.edu">
+      </div>
+      <div>
+        <label class="field-label">Contraseña</label>
+        <input id="reg-password" class="field" type="password" placeholder="Mínimo 8 caracteres">
+      </div>
+      <!-- ROL ELIMINADO: el registro público crea exclusivamente estudiantes -->
+      <p id="reg-error" class="text-xs font-500 text-red-400 hidden"></p>
+      <button id="btn-register" class="btn btn-primary w-full py-3">
+        Crear cuenta de estudiante
+      </button>
+      <p class="text-center text-sm text-slate-500">
+        ¿Ya tienes cuenta?
+        <button id="btn-go-login" class="text-indigo-400 font-600 hover:text-indigo-300">
+          Inicia sesión
+        </button>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── DASHBOARD ─────────────────────────── -->
+<section id="view-dashboard" class="view">
+  <div class="pt-10 pb-8">
+    <p class="text-xs font-600 uppercase tracking-widest text-indigo-400 mb-1">Módulo de evaluación</p>
+    <div class="flex items-end justify-between gap-4">
+      <h2 class="font-display text-2xl font-700 text-white">Cuestionarios disponibles</h2>
+      <div class="flex gap-2 flex-shrink-0">
+        <button id="btn-historial" class="btn btn-secondary text-xs px-4 py-2">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
+                     M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          Historial
+        </button>
+        <button id="btn-nuevo-quiz" class="btn btn-primary text-xs px-4 py-2 hidden">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+          Nuevo cuestionario
+        </button>
+      </div>
+    </div>
+  </div>
+  <div id="quiz-list" class="grid gap-4 sm:grid-cols-2">
+    <p class="text-sm text-slate-500 sm:col-span-2">Cargando cuestionarios…</p>
+  </div>
+</section>
+
+<!-- ─── NUEVO CUESTIONARIO (solo profesor) ── -->
+<section id="view-nuevo-quiz" class="view">
+  <div class="pt-8 mb-6 flex items-center gap-3">
+    <button id="btn-back-from-nuevo" class="btn btn-ghost text-xs px-0">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Volver
+    </button>
+    <h2 class="font-display text-2xl font-700 text-white">Nuevo cuestionario</h2>
+  </div>
+
+  <div class="glass p-6 space-y-4 mb-5">
+    <div>
+      <label class="field-label">Título del cuestionario</label>
+      <input id="nq-titulo" class="field" type="text"
+             placeholder="Ej: Evaluación Parcial — Programación I">
+    </div>
+    <div>
+      <label class="field-label">Descripción (opcional)</label>
+      <input id="nq-descripcion" class="field" type="text"
+             placeholder="Tema, unidad o indicaciones generales">
+    </div>
+  </div>
+
+  <div id="nq-preguntas-list" class="space-y-4 mb-4"></div>
+
+  <button id="btn-add-pregunta" class="btn btn-secondary w-full py-3 text-sm mb-6">
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+         stroke="currentColor" stroke-width="2.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+    </svg>
+    Agregar pregunta
+  </button>
+
+  <p id="nq-error" class="text-xs font-500 text-red-400 mb-3 hidden"></p>
+  <button id="btn-guardar-quiz" class="btn btn-primary w-full py-3">
+    Guardar y publicar cuestionario
+  </button>
+</section>
+
+<!-- ─── QUIZ ──────────────────────────────── -->
+<section id="view-quiz" class="view">
+  <div class="pt-6 mb-6">
+    <div class="flex justify-between items-center mb-2">
+      <span id="quiz-title-bar"
+            class="text-xs font-600 uppercase tracking-wide text-slate-500"></span>
+      <div class="flex items-center gap-2">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="#a5b4fc" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path stroke-linecap="round" d="M12 6v6l4 2"/>
+        </svg>
+        <span id="timer-label" class="text-sm font-600 text-indigo-400"></span>
+      </div>
+    </div>
+    <div class="h-1 rounded-full overflow-hidden bg-slate-800">
+      <div id="timer-bar-fill" style="width:100%;height:100%"></div>
+    </div>
+  </div>
+
+  <div id="questions-container" class="space-y-4"></div>
+
+  <div class="mt-10 flex justify-center">
+    <button id="btn-submit" class="btn btn-primary px-12 py-3.5 text-sm" disabled>
+      Enviar respuestas
+    </button>
+  </div>
+</section>
+
+<!-- ─── RESULTADOS ─────────────────────────── -->
+<section id="view-results" class="view">
+  <div class="pt-10 text-center mb-8">
+    <div class="relative inline-block mb-4">
+      <svg width="160" height="160" viewBox="0 0 200 200">
+        <defs>
+          <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"   stop-color="#6366f1"/>
+            <stop offset="100%" stop-color="#a855f7"/>
+          </linearGradient>
+        </defs>
+        <circle class="ring-track" cx="100" cy="100" r="90"/>
+        <circle id="score-ring"  class="ring-fill"  cx="100" cy="100" r="90"/>
+      </svg>
+      <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <span id="result-percent" class="font-display text-4xl font-800 text-white">0%</span>
+        <span class="text-xs font-500 mt-0.5 text-slate-500">calificación</span>
+      </div>
+    </div>
+    <p id="result-summary" class="text-sm font-500 text-slate-400"></p>
+    <p id="result-msg" class="font-600 mt-1 text-base"></p>
+  </div>
+
+  <div id="feedback-list" class="space-y-3 mb-10"></div>
+
+  <div class="flex justify-center gap-3">
+    <button id="btn-retry" class="btn btn-secondary px-6 py-2.5 text-sm">
+      Intentar de nuevo
+    </button>
+    <button id="btn-back-to-dash" class="btn btn-ghost px-6 py-2.5 text-sm">
+      Volver al inicio
+    </button>
+  </div>
+</section>
+
+<!-- ─── HISTORIAL ─────────────────────────── -->
+<section id="view-historial" class="view">
+  <div class="pt-8 mb-6 flex items-center justify-between">
+    <h2 class="font-display text-2xl font-700 text-white">Historial de evaluaciones</h2>
+    <button id="btn-back-from-historial" class="btn btn-ghost text-xs">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Volver
+    </button>
+  </div>
+  <div id="historial-list" class="space-y-3"></div>
+</section>
+
+</main>
+
+<footer class="border-t border-slate-800 py-6">
+  <div class="max-w-4xl mx-auto px-5 flex flex-col sm:flex-row justify-between items-center gap-2">
+    <p class="text-xs text-slate-600">© 2025 Universidad UNIMAR — Todos los derechos reservados</p>
+    <p class="text-xs text-slate-700">Plataforma de Evaluaciones en Línea</p>
+  </div>
+</footer>
+
+<div id="toast"></div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
